@@ -61,9 +61,9 @@ def unpack_block(packed_size, unpacked_size, zdata):
     return zlib.decompress(zdata, bufsize=unpacked_size) if unpacked_size != 0 else zdata
 
 
-def unpack_data(stream, root=''):
-    name_len, sub_count, count = struct.unpack_from(HDR_FMT, stream, 0)
-    name = stream[NAME_HDR_OFF:NAME_HDR_OFF+name_len]
+def unpack_data(stream, offset, root=''):
+    name_len, sub_count, count = struct.unpack_from(HDR_FMT, stream, offset[0])
+    name = stream[offset[0]+NAME_HDR_OFF:offset[0]+NAME_HDR_OFF+name_len]
     real_name_len = name.find(b'\x00')
     name = name[:real_name_len].decode()
 
@@ -71,10 +71,13 @@ def unpack_data(stream, root=''):
 
     try:
         os.mkdir(os.path.join(root, name))
+    except NotADirectoryError:
+        name = '__%s__' % name
+        os.mkdir(os.path.join(root, name))
     except FileExistsError:
         pass
 
-    block_off = NAME_HDR_OFF + name_len
+    block_off = offset[0] + NAME_HDR_OFF + name_len
 
     for i in range(count):
         block_name_len, block_type, h1, p_size, u_size = struct.unpack_from(BLOCK_FMT, stream, block_off)
@@ -102,9 +105,11 @@ def unpack_data(stream, root=''):
         block_off += NAME_BLOCK_OFF + p_size + block_name_len
 
     print()
+    offset[0] = block_off
 
     for i in range(sub_count):
-        unpack_data(stream[block_off:], root=os.path.join(root, name))
+        new_path = os.path.join(root, name)
+        unpack_data(stream, offset, root=new_path)
 
 
 if __name__ == '__main__':
@@ -121,5 +126,6 @@ if __name__ == '__main__':
         print('Wrong file type!')
         sys.exit(-2)
 
-    print('WORD2: %04X' % struct.unpack('<H', data[2:2+2]))
-    unpack_data(data[4:])
+    # print('WORD2: %04X' % struct.unpack('<H', data[2:2+2]))
+    off = [4]
+    unpack_data(data, off)
