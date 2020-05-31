@@ -1,4 +1,6 @@
+import json
 import os
+import re
 import struct
 import sys
 import zlib
@@ -61,21 +63,36 @@ def unpack_block(packed_size, unpacked_size, zdata):
     return zlib.decompress(zdata, bufsize=unpacked_size) if unpacked_size != 0 else zdata
 
 
+def create_dir(d):
+    try:
+        os.makedirs(d, exist_ok=True)
+    except (FileExistsError, NotADirectoryError):
+        name = os.path.basename(d)
+        name = '__%s__' % name
+        d = os.path.join(os.path.dirname(d), name)
+    finally:
+        os.makedirs(d, exist_ok=True)
+        return d
+
+
 def unpack_data(stream, offset, root=''):
     name_len, sub_count, count = struct.unpack_from(HDR_FMT, stream, offset[0])
     name = stream[offset[0]+NAME_HDR_OFF:offset[0]+NAME_HDR_OFF+name_len]
     real_name_len = name.find(b'\x00')
     name = name[:real_name_len].decode()
 
-    print('Dir: %s' % root)
+    if name.startswith('C:\\'):
+        name = 'Root'
 
-    try:
-        os.mkdir(os.path.join(root, name))
-    except NotADirectoryError:
-        name = '__%s__' % name
-        os.mkdir(os.path.join(root, name))
-    except FileExistsError:
-        pass
+    funcs_dict = None
+    if root == 'Root' and name == 'os':
+        funcs_dict = {}
+
+    curr_root = os.path.join(root, name)
+
+    curr_root = create_dir(curr_root)
+
+    print('Dir: %s' % curr_root)
 
     block_off = offset[0] + NAME_HDR_OFF + name_len
 
@@ -83,33 +100,46 @@ def unpack_data(stream, offset, root=''):
         block_name_len, block_type, h1, p_size, u_size = struct.unpack_from(BLOCK_FMT, stream, block_off)
 
         block_name = stream[block_off+NAME_BLOCK_OFF:block_off+NAME_BLOCK_OFF+block_name_len]
-        real_block_name_len = block_name.find(b'\x00')
-        block_name = block_name[:real_block_name_len].decode()
+        block_name = re.sub(b'[^\\w\\d_.()#@ ]+', b'', block_name)
+        block_name = block_name.decode()
+
+        fname = os.path.join(curr_root, block_name)
 
         data_off = block_off + NAME_BLOCK_OFF + block_name_len
 
         unpacked_data = unpack_block(p_size, u_size, stream[data_off:])
 
-        sub_name = os.path.join(name, block_name)
-        fname = os.path.join(root, sub_name)
-        with open(fname, 'wb') as w:
-            w.write(unpacked_data)
+        try:
+            open(fname, 'wb')
+        except PermissionError:
+            block_name = '__%s__' % block_name
+            fname = os.path.join(curr_root, block_name)
+
+        w = open(fname, 'wb')
+        w.write(unpacked_data)
+        w.close()
+
+        if funcs_dict is not None:
+            funcs_dict[block_name] = struct.unpack('<I', unpacked_data)[0]
 
         print('[%d] (%s%s) unpacked to \'%s\' (%s)' % (i + 1,
                                                        BLOCK_TYPES[block_type][0],
-                                                       '' if h1 == 0xFFFF else ('[%d]' % h1), sub_name,
+                                                       '' if h1 == 0xFFFF else ('[%d]' % h1), block_name,
                                                        ('%d -> %d bytes' % (p_size, u_size)) if u_size > 0 else
                                                        ('%d bytes' % p_size)
                                                        ))
 
         block_off += NAME_BLOCK_OFF + p_size + block_name_len
 
+    if funcs_dict is not None:
+        with open('os_funcs.json', 'w') as os_funcs_f:
+            json.dump(funcs_dict, os_funcs_f, indent=4)
+
     print()
     offset[0] = block_off
 
     for i in range(sub_count):
-        new_path = os.path.join(root, name)
-        unpack_data(stream, offset, root=new_path)
+        unpack_data(stream, offset, root=curr_root)
 
 
 if __name__ == '__main__':
