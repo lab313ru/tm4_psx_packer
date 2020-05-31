@@ -417,12 +417,12 @@
 			<attribute name="javadoc_location" value="jar:file:/D:\ghidra_9.1.2_PUBLIC\docs\GhidraAPI_javadoc.zip!/api/"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="D:/ghidra_9.1.2_PUBLIC/Ghidra/Extensions/tm4_mod_loader/lib/json-simple-1.1.1.jar">
+	<classpathentry kind="lib" path="D:/ghidra_9.1.2_PUBLIC/Ghidra/Extensions/tm4_psx_packer/lib/json-simple-1.1.1.jar">
 		<attributes>
 			<attribute name="javadoc_location" value="jar:file:/D:\ghidra_9.1.2_PUBLIC\docs\GhidraAPI_javadoc.zip!/api/"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="D:/ghidra_9.1.2_PUBLIC/Ghidra/Extensions/tm4_mod_loader/lib/tm4_mod_loader.jar" sourcepath="D:/ghidra_9.1.2_PUBLIC/Ghidra/Extensions/tm4_mod_loader/lib/tm4_mod_loader-src.zip">
+	<classpathentry kind="lib" path="D:/ghidra_9.1.2_PUBLIC/Ghidra/Extensions/tm4_psx_packer/lib/tm4_psx_packer.jar" sourcepath="D:/ghidra_9.1.2_PUBLIC/Ghidra/Extensions/tm4_psx_packer/lib/tm4_psx_packer-src.zip">
 		<attributes>
 			<attribute name="javadoc_location" value="jar:file:/D:\ghidra_9.1.2_PUBLIC\docs\GhidraAPI_javadoc.zip!/api/"/>
 		</attributes>

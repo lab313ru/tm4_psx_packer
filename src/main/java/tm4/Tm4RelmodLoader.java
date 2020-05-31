@@ -99,7 +99,7 @@ public class Tm4RelmodLoader extends AbstractLibrarySupportLoader {
 		long importsOffset = reader.readNextUnsignedInt();
 		long blockNameOffset = reader.readNextUnsignedInt();
 		
-		String name = reader.readAsciiString(blockNameOffset);
+		String name = findName(reader, blockNameOffset, log);
 		
 		FlatProgramAPI fpa = new FlatProgramAPI(program, monitor);
 		
@@ -142,6 +142,25 @@ public class Tm4RelmodLoader extends AbstractLibrarySupportLoader {
 		applyImportsRefs(fpa, st, imports, text.getStart(), osFuncs, monitor, log);
 		
 		disassemble(fpa, monitor, text.getStart());
+	}
+	
+	private static String findName(BinaryReader reader, long startOffset, MessageLog log) {
+		long offset = reader.getPointerIndex();
+		reader.setPointerIndex(startOffset);
+		
+		String name = "";
+		
+		try {
+			while ((reader.peekNextByte()) != 0x2A) {
+					name += (char)reader.readNextByte();
+			}
+		} catch (IOException e) {
+			log.appendException(e);
+		}
+		
+		reader.setPointerIndex(offset);
+		
+		return name;
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -291,7 +310,6 @@ public class Tm4RelmodLoader extends AbstractLibrarySupportLoader {
 	private static void applyMainFuncs(FlatProgramAPI fpa, SymbolTable st, final MainFuncsSegment funcs, Address base, TaskMonitor monitor, MessageLog log) {
 		for (final Map.Entry<String, Long> entry : funcs.getSymbols().entrySet()) {
 			Address addr = base.add(entry.getValue() & 0xFFFFFFFC);
-			// st.createLabel(addr, entry.getKey(), SourceType.USER_DEFINED);
 			fpa.addEntryPoint(addr);
 			fpa.createFunction(addr, entry.getKey());
 		}
