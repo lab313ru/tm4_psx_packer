@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
@@ -29,9 +30,9 @@ import java.util.concurrent.TimeUnit;
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import generic.stl.Pair;
 import ghidra.app.cmd.disassemble.DisassembleCommand;
@@ -162,24 +163,27 @@ public class Tm4RelmodLoader extends AbstractLibrarySupportLoader {
 		
 		return name;
 	}
-	
-	@SuppressWarnings("unchecked")
-	private static final HashMap<String, Long> parseOsFuncsFile(String fileName, MessageLog log) {
+
+	private static HashMap<String, Long> parseOsFuncsFile(String fileName, MessageLog log) {
 		HashMap<String, Long> funcs = new HashMap<>();
-		
+
 		try {
-			@SuppressWarnings("resource")
-			String osFuncsJson = new Scanner(new File(fileName)).useDelimiter("\\Z").next();
-			JSONObject jo = (JSONObject) new JSONParser().parse(osFuncsJson);
+			byte[] bytes = Files.readAllBytes(Path.of(fileName));
+			final String json = new String(bytes, "UTF8");
 			
-			for (String key : (Set<String>)jo.keySet()) {
-				funcs.put(key, (Long)jo.get(key));
+			final JsonElement tokens = JsonParser.parseString(json);
+			final JsonObject tokensDict = tokens.getAsJsonObject();
+			
+			for (var token : tokensDict.entrySet()) {
+				funcs.put(token.getKey(), token.getValue().getAsLong());
 			}
-		} catch (ParseException | FileNotFoundException e) {
+			
+			return funcs;
+		} catch (IOException e) {
+			e.printStackTrace();
 			log.appendException(e);
+			return null;
 		}
-		
-		return funcs;
 	}
 	
 	private static String showSelectFile(String title) {
@@ -296,7 +300,7 @@ public class Tm4RelmodLoader extends AbstractLibrarySupportLoader {
 				
 				Address funcAddr_ = fpa.toAddr(funcAddr);
 				if (fpa.getMemoryBlock(funcAddr_) == null) {
-					createSegment(fpa, String.format("IMP_%s", entry.getValue().second.first), funcAddr, new byte[] {0x00, 0x00, 0x00, 0x00}, log);
+					createSegment(fpa, String.format("IMP_%s", entry.getValue().second.first), funcAddr, new byte[] {0x08, 0x00, (byte)0xE0, 0x03, 0x00, 0x00, 0x00, 0x00}, log);
 					fpa.createFunction(funcAddr_, entry.getValue().second.first);
 				}
 			}
