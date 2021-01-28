@@ -345,7 +345,7 @@ public class Tm4RelmodLoader extends AbstractLibrarySupportLoader {
 			MemoryBlock block = fpa.createMemoryBlock(name, fpa.toAddr(offset), data, false);
 			block.setExecute(true);
 			block.setRead(true);
-			block.setWrite(true);
+			block.setWrite(false);
 			block.setVolatile(false);
 			
 			return block;
